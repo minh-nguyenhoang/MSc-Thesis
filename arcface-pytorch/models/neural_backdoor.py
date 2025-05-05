@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-from .initializer import init_weights
+from .initializer import init_net, init_net 
 from .metrics import ArcMarginProduct
 
 import functools
@@ -18,13 +18,13 @@ class ConfounderNet(nn.Module):
         self.classes: torch.Tensor
 
 
-        self.invariant_feature_generator = FeatEncoderNet(512, 2)
-        self.feature_reconstructor = FeatDecoderNet(in_channels * 2, 3)
+        self.invariant_feature_generator = init_net(FeatEncoderNet(512, 2))
+        self.feature_reconstructor = init_net(FeatDecoderNet(in_channels * 2, 3))
 
         
         self.projector = nn.Sequential(
             nn.Flatten(-3,-1),
-            nn.Linear(in_channels*feat_size*feat_size, out_channels))
+            init_net(nn.Linear(in_channels*feat_size*feat_size, out_channels)))
 
     # def forward(self, center_weights=None, is_test=False):
     #     if (not is_test) and (center_weights is not None):
@@ -65,7 +65,7 @@ class ConfounderNet(nn.Module):
         x = x.flatten(1,)
         centers = self.confounders.flatten(1,)
 
-        x = x.view(batch_size, -1)
+        # x = x.view(batch_size, -1)
         distmat = torch.pow(x, 2).sum(dim=1, keepdim=True).expand(batch_size, self.confound_nc) + \
                   torch.pow(centers, 2).sum(dim=1, keepdim=True).expand(self.confound_nc, batch_size).t()
         distmat.addmm_(1, -2, x, centers.t())
@@ -87,10 +87,10 @@ class SurrogateNet(nn.Module):
     def __init__(self, in_channels=512, feat_size=7, confound_nc=2, n_class=1000):
         super(SurrogateNet, self).__init__()
 
-        self.confounder_generator = FeatEncoderNet(in_channels, 2)
+        self.confounder_generator = init_net(FeatEncoderNet(in_channels, 2))
 
-        self.confounder_discriminator = FeatDisNet(in_channels, confound_nc, feat_size, 3)
-        self.invariant_feature_discriminator = FeatDisNet(in_channels, n_class, feat_size, 3)
+        self.confounder_discriminator = init_net(FeatDisNet(in_channels, confound_nc, feat_size, 3))
+        self.invariant_feature_discriminator = init_net(FeatDisNet(in_channels, n_class, feat_size, 3))
 
     def get_confounder_features(self, x):
         confounder_features = self.confounder_generator(x)
@@ -235,6 +235,6 @@ class FeatDisNet(nn.Module):
         self.model = nn.Sequential(*layers)
 
     def forward(self, x):
-        pred_expr = self.model(x)
-        pred_expr = torch.squeeze(pred_expr, (-2,-1))
+        pred_expr: torch.Tensor = self.model(x)
+        pred_expr = pred_expr.squeeze(-2).squeeze(-1)
         return pred_expr

@@ -109,7 +109,7 @@ class IResNet(nn.Module):
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                nn.init.normal_(m.weight, 0, 0.1)
+                nn.init.normal_(m.weight, 0, 0.01)
             elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
@@ -179,8 +179,8 @@ class IResNet(nn.Module):
 def _iresnet(arch, block, layers, pretrained, progress, **kwargs):
     model = IResNet(block, layers, **kwargs)
     if pretrained:
-        if arch == 'iresnet550':
-            model.load_state_dict(torch.load("arcface-pytorch/pretrained_ckpt/backbone_iresnet50.pth", map_location="cpu"))
+        if arch == 'iresnet50':
+            model.load_state_dict(torch.load("pretrained_ckpt/backbone_iresnet50.pth", map_location="cpu"))
         else:
             raise ValueError()
     return model
