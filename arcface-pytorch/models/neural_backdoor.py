@@ -38,20 +38,17 @@ class ConfounderNet(nn.Module):
         invariant_features: torch.Tensor = self.invariant_feature_generator(x)
         invariant_features = invariant_features.unsqueeze(1).repeat_interleave(self.confound_nc, 1).flatten(0,1)
         intervened_features = self.feature_reconstructor(invariant_features, confounders)
-        intervened_features = self.projector(intervened_features)
+        # intervened_features = self.projector(intervened_features)
         
         return intervened_features
     
     def get_invariant_features(self, x):
         invariant_features: torch.Tensor = self.invariant_feature_generator(x)
-
         return invariant_features
     
     def get_reconstruction_features(self, x: torch.Tensor, confounders: torch.Tensor):
         invariant_features = x
         intervened_features = self.feature_reconstructor(invariant_features, confounders)
-        intervened_features = self.projector(intervened_features)     
-
         return intervened_features
 
     
@@ -89,8 +86,8 @@ class SurrogateNet(nn.Module):
         super(SurrogateNet, self).__init__()
 
         self.confounder_generator = FeatEncoderNet(in_channels, 2)
-        self.confounder_discriminator = FeatDisNet(in_channels, confound_nc, feat_size, 3)
 
+        self.confounder_discriminator = FeatDisNet(in_channels, confound_nc, feat_size, 3)
         self.invariant_feature_discriminator = FeatDisNet(in_channels, n_class, feat_size, 3)
 
     def get_confounder_features(self, x):

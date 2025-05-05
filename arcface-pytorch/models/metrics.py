@@ -32,9 +32,13 @@ class ArcMarginProduct(nn.Module):
         self.th = math.cos(math.pi - m)
         self.mm = math.sin(math.pi - m) * m
 
-    def forward(self, input, label):
+    def forward(self, input: torch.Tensor, label: torch.Tensor):
+        bz = label.shape[0]
+        if input.shape[0] != label.shape[0]:
+            assert (input.shape[0] % label.shape[0] == 0), "input batch size must be divisible to label batch size"
+            label = label.unsqueeze(1).repeat_interleave(input.shape[0] // label.shape[0], dim=1).flatten(0,1)
         # --------------------------- cos(theta) & phi(theta) ---------------------------
-        cosine = F.linear(F.normalize(input), F.normalize(self.weight))
+        cosine = F.linear(F.normalize(input), F.normalize(self.weight))      
         sine = torch.sqrt((1.0 - torch.pow(cosine, 2)).clamp(0, 1))
         phi = cosine * self.cos_m - sine * self.sin_m
         if self.easy_margin:
@@ -43,14 +47,19 @@ class ArcMarginProduct(nn.Module):
             phi = torch.where(cosine > self.th, phi, cosine - self.mm)
         # --------------------------- convert label to one-hot ---------------------------
         # one_hot = torch.zeros(cosine.size(), requires_grad=True, device='cuda')
-        one_hot = torch.zeros(cosine.size(), device='cuda')
+        one_hot = torch.zeros_like(cosine)
         one_hot.scatter_(1, label.view(-1, 1).long(), 1)
         # -------------torch.where(out_i = {x_i if condition_i else y_i) -------------
         output = (one_hot * phi) + ((1.0 - one_hot) * cosine)  # you can use torch.where if your torch.__version__ is 0.4
         output *= self.s
         # print(output)
-
         return output
+    
+    def test(self, input: torch.Tensor):
+        # --------------------------- cos(theta) & phi(theta) ---------------------------
+        cosine = F.linear(F.normalize(input), F.normalize(self.weight))      
+        cosine = cosine*self.s
+        return cosine
 
 
 class AddMarginProduct(nn.Module):
