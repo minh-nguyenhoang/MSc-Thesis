@@ -178,10 +178,11 @@ class IResNet(nn.Module):
 
 def _iresnet(arch, block, layers, pretrained, progress, **kwargs):
     model = IResNet(block, layers, **kwargs)
-    if pretrained and arch == 'iresnet50':
-        model.load_state_dict(torch.load("arcface-pytorch/pretrained_ckpt/backbone_iresnet50.pth", map_location="cpu"))
-    else:
-        raise ValueError()
+    if pretrained:
+        if arch == 'iresnet550':
+            model.load_state_dict(torch.load("arcface-pytorch/pretrained_ckpt/backbone_iresnet50.pth", map_location="cpu"))
+        else:
+            raise ValueError()
     return model
 
 

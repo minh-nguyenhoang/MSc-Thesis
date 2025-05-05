@@ -8,13 +8,13 @@ from .neural_backdoor import ConfounderNet, SurrogateNet
 from torch.optim import AdamW
 
 class DeconfoundedModel(nn.Module):
-    def __init__(self, n_class = 1000, n_confounder = 2):
+    def __init__(self, n_class = 1000, n_confounder = 2, pretrained = False):
         super().__init__()
 
         self.n_class = n_class
         self.n_confounder = n_confounder
 
-        self.backbone = iresnet50()
+        self.backbone = iresnet50(pretrained)
 
         self.set_requires_grad(self.backbone, False)
         self.backbone.eval()
@@ -51,7 +51,7 @@ class DeconfoundedModel(nn.Module):
         x, labels, confound_labels = data 
         
         ### Forward features
-        features = self.backbone(x)
+        features = self.backbone.get_features(x)
         invariant_features: torch.Tensor = self.backdoor_model.get_invariant_features(features)
         confounder_features: torch.Tensor = self.surrogate_model.get_confounder_features(invariant_features)
 
@@ -82,15 +82,15 @@ class DeconfoundedModel(nn.Module):
         confounder_confuse_loss = self.rce_loss(confounder_confuse_dis, torch.ones((x.shape[0], self.n_confounder), device=confound_labels.device) / self.n_confounder)
 
         loss_gen = (invariant_confuse_loss + confounder_confuse_loss) / 2
-        loss_rec = self.mse_loss(reconstructed_features, invariant_features)
+        loss_rec = self.mse_loss(reconstructed_features, features)
         loss_center = self.backdoor_model.calculate_center_loss(confounder_features, confound_labels) * 5e-4
-        loss: torch.Tensor = loss_gen + loss_rec + loss_center
+        feat_loss: torch.Tensor = loss_gen + loss_rec + loss_center
 
         self.optimizer_Feat.zero_grad() 
-        loss.backward(retain_graph=True) 
+        feat_loss.backward(retain_graph=True) 
 
         self.backdoor_model.confounders.grad.data =  self.backdoor_model.confounders.grad.data * (1. / 5e-4)
-        self.optimizer_Feat.step()
+        
 
         ### Training classifier
         intervened_features = self.backdoor_model.get_intervened_features(invariant_features)
@@ -101,13 +101,15 @@ class DeconfoundedModel(nn.Module):
         cls_loss: torch.Tensor = self.ce_loss(pred_logits, labels)
         self.optimizer_Cls.zero_grad()
         cls_loss.backward()
+
+        self.optimizer_Feat.step()
         self.optimizer_Cls.step()
 
         accuracy = (torch.argmax(pred_logits, dim=1) == labels).float().mean()
 
         return {
             'dis_loss': dis_loss.item(),
-            'feat_loss': loss.item(),
+            'feat_loss': feat_loss.item(),
             'cls_loss': cls_loss.item(),
             'loss_rec': loss_rec.item(),
             'loss_center': loss_center.item(),
@@ -140,8 +142,7 @@ class DeconfoundedModel(nn.Module):
 
         pred = F.softmax(pred, dim=1)
         pred = torch.clamp(pred, min=1e-7, max=1.0)
-        label_one_hot = torch.nn.functional.one_hot(labels, self.num_classes).float().to(self.device)
-        label_one_hot = torch.clamp(label_one_hot, min=1e-4, max=1.0)
+        label_one_hot = labels
         rce = (-1*torch.sum(pred * torch.log(label_one_hot), dim=1))
         # Loss
         loss = rce.mean()        

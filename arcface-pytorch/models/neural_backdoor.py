@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-from ..utils.initializer import init_weights
+from .initializer import init_weights
 from .metrics import ArcMarginProduct
 
 import functools
@@ -19,10 +19,12 @@ class ConfounderNet(nn.Module):
 
 
         self.invariant_feature_generator = FeatEncoderNet(512, 2)
-        self.feature_reconstructor = FeatDecoderNet(in_channels, 3)
+        self.feature_reconstructor = FeatDecoderNet(in_channels * 2, 3)
 
         
-        self.projector = nn.Linear(in_channels*feat_size*feat_size, out_channels)
+        self.projector = nn.Sequential(
+            nn.Flatten(-3,-1),
+            nn.Linear(in_channels*feat_size*feat_size, out_channels))
 
     # def forward(self, center_weights=None, is_test=False):
     #     if (not is_test) and (center_weights is not None):
@@ -234,5 +236,5 @@ class FeatDisNet(nn.Module):
 
     def forward(self, x):
         pred_expr = self.model(x)
-        pred_expr = torch.squeeze(pred_expr)
+        pred_expr = torch.squeeze(pred_expr, (-2,-1))
         return pred_expr
