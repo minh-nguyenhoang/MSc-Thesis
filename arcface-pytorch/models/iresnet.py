@@ -1,3 +1,4 @@
+import warnings
 import torch
 from torch import nn
 from torch.utils.checkpoint import checkpoint
@@ -180,10 +181,11 @@ def _iresnet(arch, block, layers, pretrained, progress, **kwargs):
     model = IResNet(block, layers, **kwargs)
     if pretrained:
         if arch == 'iresnet50':
-            model.load_state_dict(torch.load("pretrained_ckpt/backbone_iresnet50.pth", map_location="cpu"))
+            model.load_state_dict(torch.hub.load_state_dict_from_url("https://github.com/minh-nguyenhoang/MSc-Thesis/releases/download/backbone/backbone_r50.pth", map_location="cpu"))
         else:
-            raise ValueError()
-    return model
+            warnings.warn("Pretrained model is not available for this architecture. "
+                          "You can train the model from scratch.")
+    return model.float() if kwargs.get('fp16', False) else model
 
 
 def iresnet18(pretrained=False, progress=True, **kwargs):

@@ -8,7 +8,7 @@ from .neural_backdoor import ConfounderNet, SurrogateNet
 from torch.optim import AdamW
 
 class DeconfoundedModel(nn.Module):
-    def __init__(self, n_class = 1000, n_confounder = 2, pretrained = False):
+    def __init__(self, n_class = 1000, pretrained = False, n_confounder = 2):
         super().__init__()
 
         self.n_class = n_class
@@ -162,4 +162,12 @@ class DeconfoundedModel(nn.Module):
                     param.requires_grad = requires_grad
 
 
+class NormalModel(nn.Module):
+    def __init__(self, n_class = 1000, pretrained = False):
+        super().__init__()
 
+        self.n_class = n_class
+
+        self.backbone = iresnet50(pretrained)
+
+        
