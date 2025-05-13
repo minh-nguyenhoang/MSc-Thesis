@@ -1,4 +1,5 @@
 import os
+import random
 from PIL import Image
 import torch
 from torch.utils import data
@@ -56,15 +57,12 @@ class Dataset(data.Dataset):
 
 
 class ConfoundingDataset(data.Dataset):
-    def __init__(self, root, data_list_file, phase='train', input_shape=(3, 112, 112)):
+    def __init__(self, data_list_file, phase='train', input_shape=(3, 112, 112)):
         self.phase = phase
         self.input_shape = input_shape
 
-        with open(os.path.join(data_list_file), 'r') as fd:
-            imgs = fd.readlines()
-
-        imgs = [os.path.join(root, img[:-1]) for img in imgs]
-        self.imgs = np.random.permutation(imgs)
+    
+        self.data = self.process_data(data_list_file)
 
         normalize = T.Normalize(mean=[0.5, 0.5, 0.5],
                                 std=[0.5, 0.5, 0.5])
@@ -86,19 +84,35 @@ class ConfoundingDataset(data.Dataset):
             ])
 
     def __getitem__(self, index):
-        sample: str = self.imgs[index]
-        splits = sample.split()
-        img_path = splits[0]
+        ## Ensure data balancing on main label
+        sample: str = self.data[index]
+        img_path = random.choice(sample['image_files'])
         data = Image.open(img_path).convert('RGB').resize((112,112))
         data: torch.Tensor = self.transforms(data)
-        label = torch.tensor(np.int32(splits[1]))
-        gender_label = torch.tensor(np.int32(splits[2]))
+        label = torch.tensor(sample["label"]).long()
+        gender_label = torch.tensor(sample['confounder_label']).long()
         return data.float(), label, gender_label
 
     def __len__(self):
-        return len(self.imgs)
+        return len(self.data)
     
-    def 
+    def process_data(self, data_file_path):
+        with open(data_file_path, 'r') as fd:
+            lines = fd.readlines()
+
+        result_lines = []
+        for i, line in enumerate(lines):
+            data_and_labels = line.split("\t")
+            label = data_and_labels[0]
+            confounder_label = data_and_labels[1]
+            image_files = data_and_labels[2:]
+            # image_files = [os.path.join(self.root, img) for img in image_files]
+            result_lines.append({"label": i, 
+                                        "label_name": label,
+                                        "confounder_label": 0 if confounder_label == "M" else 1,
+                                        "confounder_label_name": confounder_label, 
+                                        "image_files": image_files})
+        return result_lines
 
 
 if __name__ == '__main__':

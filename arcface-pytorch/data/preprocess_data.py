@@ -23,25 +23,38 @@ def get_data_list(input_dir: str, input_file, output_file: str, num_samples= 30)
         for folder_and_gender in lines:
             folder, gender = folder_and_gender.strip().split()
             folder = os.path.basename(folder)
-            gender = "M" if "male" == gender.lower() else "F" if "female" == gender.lower() else gender
+            gender = "M" if "male" == gender.strip().lower() else "F" if "female" == gender.strip().lower() else gender
             folder_path = os.path.join(input_dir, folder)
             if os.path.isdir(folder_path):
                 image_files = sampling_images_path(folder_path, num_samples)
                 images_file_str = "\t".join(image_files)
-                images_file_str = folder + "\t" + images_file_str + gender + "\n"
+                images_file_str = folder + "\t" + gender + "\t" + images_file_str + "\n"
                 result_lines.append(images_file_str)
         f.writelines(result_lines)
 
     print(f"Data list saved to {output_file}")
 
 
-def split_train_test(input_path: str, class_balance_on_test = True):
+def split_train_test(input_path: str, train_ratio = 0.8, class_balance_on_test = True):
     with open(input_path, 'r') as fd:
         lines = fd.readlines()
-
+    total_cls = len(lines)
+    train_cls = int(total_cls * train_ratio)
+    test_cls = total_cls - train_cls
     if class_balance_on_test:
         cls_labels = []
         for line in lines:
-            class_label = line.split()[-1]
+            class_label = line.split()[1]
             cls_labels.append(class_label)
         unique_labels, count = np.unique(cls_labels, return_counts=True)
+        min_count = np.min(count)
+        argmin_count = np.argmin(count)
+
+        if min_count/2 > test_cls/len(unique_labels):
+            sample_to_take = int(test_cls/len(unique_labels))
+        else:
+            sample_to_take = int(min_count/2)
+
+        for cls, count in zip(unique_labels, count):
+            
+        
