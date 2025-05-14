@@ -41,13 +41,19 @@ def split_train_test(input_path: str, train_ratio = 0.8, class_balance_on_test =
     total_cls = len(lines)
     train_cls = int(total_cls * train_ratio)
     test_cls = total_cls - train_cls
+
+    train_samples_list = []
+    test_samples_list = []
+
     if class_balance_on_test:
         cls_labels = []
         for line in lines:
             class_label = line.split()[1]
             cls_labels.append(class_label)
+        cls_labels = np.array(cls_labels)
+        idx = np.arange(len(lines))
         unique_labels, count = np.unique(cls_labels, return_counts=True)
-        min_count = np.min(count)
+        min_count = np.min(count).astype(np.int32).item()
         argmin_count = np.argmin(count)
 
         if min_count/2 > test_cls/len(unique_labels):
@@ -56,5 +62,21 @@ def split_train_test(input_path: str, train_ratio = 0.8, class_balance_on_test =
             sample_to_take = int(min_count/2)
 
         for cls, count in zip(unique_labels, count):
-            
+            samples = lines[idx[cls_labels == cls]]
+            samples = np.random.permutation(samples)
+            test_samples = samples[:sample_to_take]
+            train_samples = samples[sample_to_take:]
+            train_samples_list.extend(train_samples.tolist())
+            test_samples_list.extend(test_samples.tolist())
+    else:
+        lines = np.random.permutation(lines)
+        train_samples_list = lines[:train_cls]
+        test_samples_list = lines[train_cls:]
+
+    with open(input_path.replace(".txt", "_train.txt"), 'w') as f:
+        f.writelines(train_samples_list)
+    with open(input_path.replace(".txt", "_test.txt"), 'w') as f:
+        f.writelines(test_samples_list)
+
+
         
