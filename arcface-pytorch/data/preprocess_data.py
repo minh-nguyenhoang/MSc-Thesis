@@ -6,7 +6,7 @@ from tqdm.auto import tqdm
 
 def sampling_images_path(input_dir: str, num_samples= 30):
     image_files = [f for f in os.listdir(input_dir) if f.endswith('.jpg') or f.endswith('.png')]
-    if len(image_files) < num_samples:
+    if len(image_files) < num_samples or num_samples < 1:
         sampled_files = image_files
     else:
         sampled_files = np.random.choice(image_files, num_samples, replace=False)
@@ -14,7 +14,7 @@ def sampling_images_path(input_dir: str, num_samples= 30):
     sampled_files = [os.path.join(input_dir, f) for f in sampled_files]
     return sampled_files
 
-def get_data_list(input_dir: str, input_file, output_file: str, num_samples= 30):
+def get_data_list(input_dir: str, input_file, output_file: str, num_samples= -1):
     with open(output_file, 'w') as f:
         with open(input_file, 'r') as fd:
             lines = fd.readlines()
